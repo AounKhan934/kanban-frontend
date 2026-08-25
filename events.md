@@ -229,4 +229,4 @@ On any rejection, the client should discard its optimistic change for that `oper
   "boardId": "..."
 }
 ```
-Sent by the server to a specific client when it detects that client's state may be stale beyond what a single `operation:rejected` can fix (e.g. the client was disconnected and missed multiple events). On receiving this, the client re-emits `board:join` for the same `boardId`, which triggers a fresh `board:state` response — the same full-resync path used on initial join.[3:46 PM]ye events.md update krde
+Sent by the server to a specific client when it detects that client's state may be stale beyond what a single `operation:rejected` can fix (e.g. the client was disconnected and missed multiple events). On receiving this, the client re-emits `board:join` for the same `boardId`, which triggers a fresh `board:state` response — the same full-resync path used on initial join.
