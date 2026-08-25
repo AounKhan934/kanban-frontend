@@ -51,3 +51,4 @@ export default function Card({ card, onEdit, onDelete, editingUser }: CardProps)
     </MuiCard>
   );
 }
+

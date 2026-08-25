@@ -21,3 +21,4 @@ export type Board = {
   columns: Column[];
   boardVersion: number;
 };
+

@@ -47,3 +47,4 @@ export default function CardForm({ card, onSave, onCancel }: CardFormProps) {
     </form>
   );
 }
+
