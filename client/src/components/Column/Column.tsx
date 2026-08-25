@@ -8,6 +8,7 @@ type ColumnProps = {
   onEditCard: (card: CardType) => void;
   onDeleteCard: (cardId: string) => void;
   onCreateCard: () => void;
+  onMoveCard?: (cardId: string, toColumnId: string, position: number) => void;
   editingByCardId?: Record<string, string>;
 };
 

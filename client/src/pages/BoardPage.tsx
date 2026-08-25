@@ -14,6 +14,7 @@ export default function BoardPage() {
   const [creatingColumnId, setCreatingColumnId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [editingByCardId, setEditingByCardId] = useState<Record<string, string>>({});
 
   // Step 3: connect + join room + listen, once on mount
   useEffect(() => {
@@ -47,6 +48,29 @@ export default function BoardPage() {
       socket.emit("board:join", { boardId: BOARD_ID });
     });
 
+    // Stubs for Abdullah's presence/editing UI — data is ready, no UI to show it yet
+    socket.on("presence:update", (_data: { users: { userId: string; userName: string }[] }) => {
+      // TODO(abdullah): render presence avatars/chips from _data.users
+    });
+
+    socket.on("card:editing:started", ({ cardId, userName }: { cardId: string; userId: string; userName: string }) => {
+      setEditingByCardId((current) => ({ ...current, [cardId]: userName }));
+    });
+
+    socket.on("card:editing:stopped", ({ cardId }: { cardId: string; userId: string; userName: string }) => {
+      setEditingByCardId((current) => {
+        const next = { ...current };
+        delete next[cardId];
+        return next;
+      });
+    });
+
+    // Not implemented yet — waiting on Abdullah's drag/drop to emit card:move
+    // Applies a confirmed move from the server (or another user) to board state
+    socket.on("card:moved", (data: { operationId: string; cardId: string; columnId: string; position: number; version: number }) => {
+      applyMove(data.cardId, data.columnId, data.position, data.version);
+    });
+
     return () => {
       socket.off("board:state");
       socket.off("card:created");
@@ -54,6 +78,10 @@ export default function BoardPage() {
       socket.off("card:deleted");
       socket.off("operation:rejected");
       socket.off("board:resync");
+      socket.off("presence:update");
+      socket.off("card:editing:started");
+      socket.off("card:editing:stopped");
+      socket.off("card:moved");
       socket.disconnect();
     };
   }, []);
@@ -81,6 +109,50 @@ export default function BoardPage() {
         cards: column.cards.filter((card) => card.id !== operationId),
       })),
     }));
+  }
+
+  // Moves a card into (possibly) a new column at a given index, updating version
+  function applyMove(cardId: string, toColumnId: string, position: number, version: number) {
+    setBoard((currentBoard) => {
+      let movedCard: Card | undefined;
+
+      const withoutCard = currentBoard.columns.map((column) => {
+        const found = column.cards.find((c) => c.id === cardId);
+        if (found) movedCard = { ...found, columnId: toColumnId, version, status: "idle" };
+        return { ...column, cards: column.cards.filter((c) => c.id !== cardId) };
+      });
+
+      if (!movedCard) return currentBoard;
+
+      return {
+        ...currentBoard,
+        columns: withoutCard.map((column) => {
+          if (column.id !== toColumnId) return column;
+          const cards = [...column.cards];
+          cards.splice(position, 0, movedCard!);
+          return { ...column, cards };
+        }),
+      };
+    });
+  }
+
+  // Ready for drag/drop to call: optimistic move + emit card:move
+  function handleMoveCard(cardId: string, toColumnId: string, position: number) {
+    const card = board.columns.flatMap((c) => c.cards).find((c) => c.id === cardId);
+    if (!card) return;
+
+    const operationId = crypto.randomUUID();
+    applyMove(cardId, toColumnId, position, card.version); // optimistic, version confirmed on server response
+
+    socket.emit("card:move", {
+      operationId,
+      boardId: BOARD_ID,
+      cardId,
+      fromColumnId: card.columnId,
+      toColumnId,
+      position,
+      version: card.version,
+    });
   }
 
   // On rejection: mark the card rejected, then remove it shortly after
@@ -173,6 +245,8 @@ export default function BoardPage() {
       <Board
         board={board}
         isSyncing={isSyncing}
+        editingByCardId={editingByCardId}
+        onMoveCard={handleMoveCard}
         onEditCard={(card) => setEditingCard(card)}
         onDeleteCard={(cardId) => {
           const card = board.columns.flatMap((c) => c.cards).find((c) => c.id === cardId);

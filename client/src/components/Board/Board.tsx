@@ -7,6 +7,7 @@ type BoardProps = {
   onEditCard: (card: CardType) => void;
   onDeleteCard: (cardId: string) => void;
   onCreateCard: (columnId: string) => void;
+  onMoveCard?: (cardId: string, toColumnId: string, position: number) => void;
   editingByCardId?: Record<string, string>;
   isSyncing?: boolean;
 };
@@ -16,6 +17,7 @@ export default function Board({
   onEditCard,
   onDeleteCard,
   onCreateCard,
+  onMoveCard,
   editingByCardId,
   isSyncing,
 }: BoardProps) {
@@ -42,6 +44,7 @@ export default function Board({
             onEditCard={onEditCard}
             onDeleteCard={onDeleteCard}
             onCreateCard={() => onCreateCard(column.id)}
+            onMoveCard={onMoveCard}
             editingByCardId={editingByCardId}
           />
         ))}
